@@ -63,10 +63,8 @@ resource "aws_s3_bucket_policy" "website" {
         Sid       = "PublicReadGetObject"
         Effect    = "Allow"
         Principal = "*"
-
-        Action = "s3:GetObject"
-
-        Resource = "${aws_s3_bucket.website.arn}/*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.website.arn}/*"
       }
     ]
   })
@@ -119,27 +117,6 @@ resource "aws_s3_object" "js" {
 
 
 # ============================================================
-# OUTPUTS
-# ============================================================
-
-output "bucket_name" {
-  description = "Name of the S3 bucket"
-  value       = aws_s3_bucket.website.id
-}
-
-output "bucket_arn" {
-  description = "ARN of the S3 bucket"
-  value       = aws_s3_bucket.website.arn
-}
-
-output "website_endpoint" {
-  description = "S3 static website endpoint"
-  value       = aws_s3_bucket_website_configuration.website.website_endpoint
-}
-
-
-
-# ============================================================
 # DEFAULT VPC
 # ============================================================
 
@@ -149,7 +126,7 @@ data "aws_vpc" "default" {
 
 
 # ============================================================
-# DEFAULT SUBNET
+# DEFAULT SUBNETS
 # ============================================================
 
 data "aws_subnets" "default" {
@@ -195,6 +172,7 @@ resource "aws_security_group" "web" {
   description = "Security group for static website EC2"
   vpc_id      = data.aws_vpc.default.id
 
+  # HTTP
   ingress {
     description = "HTTP"
     from_port   = 80
@@ -203,14 +181,16 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # SSH
   ingress {
-    description = "SSH from anywhere - temporary learning setup"
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.admin_cidr]
   }
 
+  # Outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
@@ -241,7 +221,8 @@ resource "aws_instance" "web" {
 
   associate_public_ip_address = true
 
-  key_name = "aws-static-website-key"
+  # MUST match the AWS EC2 Key Pair name
+  key_name = "aws_services"
 
   user_data = <<-EOF
               #!/bin/bash
@@ -256,7 +237,7 @@ resource "aws_instance" "web" {
 
               cd /tmp
 
-              git clone https://github.com/harshaldhande/aws-static-website-devops
+              git clone https://github.com/harshaldhande/aws-static-website-devops.git
 
               cp -r aws-static-website-devops/* /var/www/html/
 
